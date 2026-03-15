@@ -15,10 +15,79 @@ An AI agent skill for multi-strategy stock analysis. Produces a structured **Dec
 3. Ask the agent to analyze any stock:
 
 ```
-Analyze 601919 for me
+Analyze 600519 for me
 ```
 
-The agent runs the pipeline and returns a formatted Decision Dashboard.
+The agent runs the pipeline and returns a formatted Decision Dashboard. Here is a sample output for Kweichow Moutai (600519):
+
+<details>
+<summary>📊 Sample Output — Kweichow Moutai (600519)</summary>
+
+```markdown
+# Kweichow Moutai (600519) Analysis Report
+
+## 🎯 Core Conclusion
+
+| Item | Detail |
+|------|--------|
+| Summary | Short-term pressure, executive risk event pending digestion |
+| Signal | 🟡 Hold Signal |
+| Decision | **Hold** — Confidence: Medium |
+| Sentiment | 38 / 100 |
+
+**No position**: Wait for negative news to be absorbed; watch for stabilization at 1380 support
+**Holding**: Hold for now; consider reducing if price breaks below 1380
+
+---
+
+## 📈 Data Perspective
+
+**Trend**: Bearish MA alignment · Trend score 35 · ⚠️ Weak
+
+| Indicator | Value |
+|-----------|-------|
+| Price | 1413.64 |
+| MA5 / MA10 / MA20 | 1400.90 / 1407.30 / 1448.69 |
+| RSI | 46.3 |
+| Volume Ratio | 1.14 · Normal |
+| Support / Resistance | 1323.69 / 1555.00 |
+
+---
+
+## 📰 Intelligence & Risk
+
+**Sentiment**: Bearish
+
+Key news:
+- ❌ Moutai VP Jiang Yan placed under detention by supervisory commission
+- ❌ Moutai CFO & Board Secretary Jiang Yan detained
+- ❌ Chairman Chen Hua assumes Board Secretary duties
+
+⚠️ **Risk Alert**: Senior executive detention is a major governance risk event
+
+---
+
+## 📋 Strategies Used
+
+The following strategies were applied:
+1. **Box Oscillation** (box_oscillation) — Identifies price range boundaries
+2. **Shrink Pullback** (shrink_pullback) — Detects low-volume pullback to MA support
+
+---
+
+## 🎯 Battle Plan
+
+| Level | Price |
+|-------|-------|
+| Ideal Buy | 1380 (box bottom support) |
+| Secondary Buy | 1400 (near MA5) |
+| Stop Loss | 1320 (below box range) |
+| Take Profit | 1500 (near MA20 resistance) |
+
+⚠️ AI-generated content for reference only. Not investment advice.
+```
+
+</details>
 
 ## Requirements
 
