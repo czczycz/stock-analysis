@@ -52,14 +52,26 @@ def _is_a_share(ticker: str) -> bool:
     return clean.isdigit() and len(clean) == 6
 
 
-def _fetch_history(ticker: str, period: str = "6mo") -> pd.DataFrame:
-    """Fetch historical OHLCV via yfinance for all markets.
+def _fetch_history_tencent(ticker: str, days: int = 120) -> pd.DataFrame:
+    """Fetch A-share history via Tencent Finance K-line API (primary source)."""
+    from data_provider import fetch_a_share_history
+    records = fetch_a_share_history(ticker, days=days)
+    if not records:
+        return pd.DataFrame()
+    df = pd.DataFrame(records)
+    df["Date"] = pd.to_datetime(df["date"])
+    df.set_index("Date", inplace=True)
+    df = df.rename(columns={"open": "Open", "close": "Close",
+                             "high": "High", "low": "Low", "volume": "Volume"})
+    for c in ["Open", "High", "Low", "Close", "Volume"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    return df.dropna(subset=["Close"])
 
-    For A-shares, auto-resolves 6-digit code to Yahoo ticker (e.g. 600406 → 600406.SS).
-    """
+
+def _fetch_history_yfinance(ticker: str, period: str = "6mo") -> pd.DataFrame:
+    """Fetch history via yfinance (fallback source)."""
     import yfinance as yf
     from data_provider import resolve_ticker
-
     yf_ticker = resolve_ticker(ticker)["yahoo"] if _is_a_share(ticker) else ticker
     df = yf.download(yf_ticker, period=period, interval="1d", progress=False)
     if isinstance(df.columns, pd.MultiIndex):
@@ -68,6 +80,17 @@ def _fetch_history(ticker: str, period: str = "6mo") -> pd.DataFrame:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
     return df.dropna(subset=["Close"])
+
+
+def _fetch_history(ticker: str) -> pd.DataFrame:
+    """Fetch historical OHLCV. Tencent Finance first for A-shares, yfinance as fallback."""
+    if _is_a_share(ticker):
+        df = _fetch_history_tencent(ticker)
+        if not df.empty and len(df) >= 5:
+            return df
+        print("[technical] Tencent K-line empty, falling back to yfinance",
+              file=sys.stderr)
+    return _fetch_history_yfinance(ticker)
 
 
 def _fetch_realtime(stock_code: str) -> dict:

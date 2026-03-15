@@ -56,6 +56,54 @@ def is_a_share(code: str) -> bool:
     return clean.isdigit() and len(clean) == 6
 
 
+def fetch_a_share_history(code: str, days: int = 120) -> List[Dict[str, Any]]:
+    """Fetch A-share daily K-line via Tencent Finance (web.ifzq.gtimg.cn).
+
+    Returns list of dicts with keys: date, open, close, high, low, volume.
+    Uses forward-adjusted (qfq) prices. No API key needed.
+    """
+    tickers = resolve_ticker(code)
+    tencent_code = tickers.get("tencent", "")
+    if not tencent_code:
+        return []
+
+    import datetime as _dt
+    end = _dt.datetime.now().strftime("%Y-%m-%d")
+    start = (_dt.datetime.now() - _dt.timedelta(days=days + 60)).strftime("%Y-%m-%d")
+    url = (f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+           f"?param={tencent_code},day,{start},{end},{days + 60},qfq")
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; StockAnalysis/1.0)",
+                "Connection": "close",
+            })
+            resp = urllib.request.urlopen(req, timeout=10).read().decode("utf-8")
+            data = json.loads(resp)
+            stock_data = data.get("data", {}).get(tencent_code, {})
+            klines = stock_data.get("qfqday") or stock_data.get("day") or []
+            if not klines:
+                return []
+            results = []
+            for k in klines:
+                results.append({
+                    "date": k[0],
+                    "open": float(k[1]),
+                    "close": float(k[2]),
+                    "high": float(k[3]),
+                    "low": float(k[4]),
+                    "volume": float(k[5]) if len(k) > 5 else 0,
+                })
+            return results[-days:]
+        except Exception as e:
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF[attempt])
+            else:
+                print(f"[tencent history] {e}", file=sys.stderr)
+    return []
+
+
 def fetch_a_share_realtime(code: str) -> Dict[str, Any]:
     """Fetch real-time A-share quote from Tencent Finance (qt.gtimg.cn).
 
