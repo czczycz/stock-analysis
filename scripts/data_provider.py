@@ -39,7 +39,19 @@ if __name__ == "__main__":
 
 def resolve_ticker(code: str) -> Dict[str, str]:
     """Resolve a stock code to ticker formats for different data sources."""
-    clean = code.strip().upper().split(".")[0]
+    raw = code.strip().upper()
+
+    if raw.endswith(".HK") or raw.endswith(".HK"):
+        num = raw.split(".")[0].lstrip("0") or "0"
+        padded = num.zfill(5)
+        return {
+            "yahoo": f"{num}.HK",
+            "akshare": padded,
+            "market": "HK",
+            "tencent": f"hk{padded}",
+        }
+
+    clean = raw.split(".")[0]
     if clean.isdigit() and len(clean) == 6:
         if clean.startswith("6"):
             return {"yahoo": f"{clean}.SS", "akshare": clean, "market": "A-share (Shanghai)",
@@ -48,12 +60,16 @@ def resolve_ticker(code: str) -> Dict[str, str]:
             return {"yahoo": f"{clean}.SZ", "akshare": clean, "market": "A-share (Shenzhen)",
                     "tencent": f"sz{clean}"}
         return {"yahoo": clean, "akshare": clean, "market": "Unknown", "tencent": ""}
-    return {"yahoo": clean, "akshare": clean, "market": "US/Global", "tencent": ""}
+    return {"yahoo": raw if "." in raw else clean, "akshare": clean, "market": "US/Global", "tencent": ""}
 
 
 def is_a_share(code: str) -> bool:
     clean = code.strip().split(".")[0]
     return clean.isdigit() and len(clean) == 6
+
+
+def is_hk_stock(code: str) -> bool:
+    return code.strip().upper().endswith(".HK")
 
 
 def fetch_a_share_history(code: str, days: int = 120) -> List[Dict[str, Any]]:
@@ -170,6 +186,71 @@ def fetch_a_share_realtime(code: str) -> Dict[str, Any]:
     }
 
 
+def fetch_hk_realtime(code: str) -> Dict[str, Any]:
+    """Fetch real-time HK stock quote from Tencent Finance (qt.gtimg.cn).
+
+    HK field layout differs from A-shares — uses dedicated mapping.
+    """
+    tickers = resolve_ticker(code)
+    tencent_code = tickers.get("tencent", "")
+    if not tencent_code:
+        return {"error": f"Cannot resolve {code} for Tencent Finance HK"}
+
+    url = f"http://qt.gtimg.cn/q={tencent_code}"
+    resp = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (compatible; StockAnalysis/1.0)",
+                "Connection": "close",
+            })
+            resp = urllib.request.urlopen(req, timeout=10).read().decode("gbk", errors="replace")
+            break
+        except Exception as e:
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF[attempt])
+            else:
+                return {"error": f"Tencent Finance HK request failed: {e}"}
+
+    m = re.search(r'"([^"]+)"', resp)
+    if not m:
+        return {"error": "Failed to parse Tencent Finance HK response"}
+
+    fields = m.group(1).split("~")
+    if len(fields) < 50:
+        return {"error": f"Unexpected field count: {len(fields)}"}
+
+    def _sf(idx, default=0.0):
+        try:
+            return float(fields[idx])
+        except (IndexError, ValueError):
+            return default
+
+    return {
+        "name": fields[1] if len(fields) > 1 else "",
+        "code": fields[2] if len(fields) > 2 else code,
+        "price": _sf(3),
+        "yesterday_close": _sf(4),
+        "open": _sf(5),
+        "volume": _sf(6),
+        "high": _sf(33),
+        "low": _sf(34),
+        "amount": _sf(37),
+        "pe_ratio": _sf(39),
+        "amplitude": _sf(43),
+        "market_cap_circulating": _sf(44),
+        "market_cap_total": _sf(45),
+        "turnover_rate": _sf(50),
+        "pb_ratio": _sf(58),
+        "week52_high": _sf(48),
+        "week52_low": _sf(49),
+        "change_amount": _sf(31),
+        "change_percent": _sf(32),
+        "currency": fields[75] if len(fields) > 75 else "HKD",
+        "source": "tencent_finance",
+    }
+
+
 def fetch_us_stock_realtime(ticker: str) -> Dict[str, Any]:
     """Fetch real-time US/Global stock quote via yfinance."""
     try:
@@ -225,19 +306,35 @@ def fetch_a_share_news(code: str, limit: int = 10) -> List[Dict[str, str]]:
 
 
 def fetch_us_stock_news(ticker: str, limit: int = 10) -> List[Dict[str, str]]:
-    """Fetch US/Global stock news via yfinance."""
+    """Fetch US/HK/Global stock news via yfinance.
+
+    Handles both legacy flat format and newer nested ``content`` format.
+    """
     try:
         import yfinance as yf
         t = yf.Ticker(ticker)
         news = t.news or []
         results = []
         for item in news[:limit]:
-            results.append({
-                "title": item.get("title", ""),
-                "publisher": item.get("publisher", ""),
-                "link": item.get("link", ""),
-                "time": str(item.get("providerPublishTime", "")),
-            })
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content") or {}
+            if content:
+                provider = content.get("provider") or {}
+                click_url = content.get("clickThroughUrl") or {}
+                results.append({
+                    "title": content.get("title", ""),
+                    "publisher": provider.get("displayName", ""),
+                    "link": click_url.get("url", ""),
+                    "time": content.get("pubDate", ""),
+                })
+            else:
+                results.append({
+                    "title": item.get("title", ""),
+                    "publisher": item.get("publisher", ""),
+                    "link": item.get("link", ""),
+                    "time": str(item.get("providerPublishTime", "")),
+                })
         return results
     except Exception as e:
         print(f"[yfinance news] {e}", file=sys.stderr)
@@ -250,6 +347,15 @@ def fetch_stock_news(code: str, limit: int = 10) -> List[Dict[str, str]]:
         return fetch_a_share_news(code, limit)
     tickers = resolve_ticker(code)
     return fetch_us_stock_news(tickers["yahoo"], limit)
+
+
+def fetch_realtime(code: str) -> Dict[str, Any]:
+    """Fetch real-time quote — auto-selects source based on stock type."""
+    if is_a_share(code):
+        return fetch_a_share_realtime(code)
+    if is_hk_stock(code):
+        return fetch_hk_realtime(code)
+    return fetch_us_stock_realtime(resolve_ticker(code)["yahoo"])
 
 
 def main():
@@ -274,14 +380,9 @@ def main():
     if args.command == "resolve-ticker":
         print(json.dumps(resolve_ticker(args.code), ensure_ascii=False, indent=2))
     elif args.command == "realtime":
-        if is_a_share(args.code):
-            result = fetch_a_share_realtime(args.code)
-        else:
-            result = fetch_us_stock_realtime(resolve_ticker(args.code)["yahoo"])
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps(fetch_realtime(args.code), ensure_ascii=False, indent=2))
     elif args.command == "news":
-        result = fetch_stock_news(args.code, args.limit)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(json.dumps(fetch_stock_news(args.code, args.limit), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

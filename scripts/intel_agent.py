@@ -84,11 +84,11 @@ def _classify_news(items: list) -> dict:
 
 
 def fetch_intel(ticker: str) -> dict:
-    """Fetch news and intelligence from AkShare (A-share) or yfinance (US/Global)."""
+    """Fetch news and intelligence from AkShare (A-share) or yfinance (US/HK/Global)."""
     from data_provider import is_a_share, fetch_a_share_news, fetch_us_stock_news, resolve_ticker
 
-    clean = ticker.split(".")[0]
     all_news = []
+    clean = ticker.strip().split(".")[0]
 
     if is_a_share(clean):
         try:
@@ -97,7 +97,7 @@ def fetch_intel(ticker: str) -> dict:
             print(f"[akshare news] {e}", file=sys.stderr)
     else:
         try:
-            tickers = resolve_ticker(clean)
+            tickers = resolve_ticker(ticker)
             all_news = fetch_us_stock_news(tickers["yahoo"], limit=15)
         except Exception as e:
             print(f"[yfinance news] {e}", file=sys.stderr)

@@ -82,9 +82,13 @@ def _fetch_history_yfinance(ticker: str, period: str = "6mo") -> pd.DataFrame:
     return df.dropna(subset=["Close"])
 
 
+def _is_hk_stock(ticker: str) -> bool:
+    return ticker.strip().upper().endswith(".HK")
+
+
 def _fetch_history(ticker: str) -> pd.DataFrame:
-    """Fetch historical OHLCV. Tencent Finance first for A-shares, yfinance as fallback."""
-    if _is_a_share(ticker):
+    """Fetch historical OHLCV. Tencent Finance first for A-shares/HK, yfinance as fallback."""
+    if _is_a_share(ticker) or _is_hk_stock(ticker):
         df = _fetch_history_tencent(ticker)
         if not df.empty and len(df) >= 5:
             return df
@@ -94,11 +98,14 @@ def _fetch_history(ticker: str) -> pd.DataFrame:
 
 
 def _fetch_realtime(stock_code: str) -> dict:
-    """Fetch real-time quote via Tencent Finance (A-share) or yfinance (US/Global)."""
+    """Fetch real-time quote via Tencent Finance (A-share/HK) or yfinance (US/Global)."""
     try:
-        from data_provider import fetch_a_share_realtime, fetch_us_stock_realtime, is_a_share, resolve_ticker
+        from data_provider import (fetch_a_share_realtime, fetch_hk_realtime,
+                                   fetch_us_stock_realtime, is_a_share, is_hk_stock, resolve_ticker)
         if is_a_share(stock_code):
             return fetch_a_share_realtime(stock_code)
+        elif is_hk_stock(stock_code):
+            return fetch_hk_realtime(stock_code)
         else:
             tickers = resolve_ticker(stock_code)
             return fetch_us_stock_realtime(tickers["yahoo"])

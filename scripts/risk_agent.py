@@ -72,12 +72,12 @@ def _filter_news_by_category(news_items: list, keywords: list) -> list:
 def fetch_risk_data(ticker: str) -> dict:
     """Fetch risk-specific data from AkShare/Tencent/yfinance."""
     from data_provider import (
-        is_a_share, fetch_a_share_news, fetch_us_stock_news,
-        fetch_a_share_realtime, fetch_us_stock_realtime,
+        is_a_share, is_hk_stock, fetch_a_share_news, fetch_us_stock_news,
+        fetch_a_share_realtime, fetch_hk_realtime, fetch_us_stock_realtime,
         resolve_ticker,
     )
 
-    clean = ticker.split(".")[0]
+    clean = ticker.strip().split(".")[0]
     all_news = []
 
     if is_a_share(clean):
@@ -87,7 +87,7 @@ def fetch_risk_data(ticker: str) -> dict:
             print(f"[risk news] {e}", file=sys.stderr)
     else:
         try:
-            tickers = resolve_ticker(clean)
+            tickers = resolve_ticker(ticker)
             all_news = fetch_us_stock_news(tickers["yahoo"], limit=20)
         except Exception as e:
             print(f"[risk news] {e}", file=sys.stderr)
@@ -112,9 +112,24 @@ def fetch_risk_data(ticker: str) -> dict:
                 }
         except Exception as e:
             print(f"[risk valuation tencent] {e}", file=sys.stderr)
+    elif is_hk_stock(ticker):
+        try:
+            quote = fetch_hk_realtime(ticker)
+            if "error" not in quote:
+                valuation = {
+                    "pe_ratio": quote.get("pe_ratio", 0),
+                    "pb_ratio": quote.get("pb_ratio", 0),
+                    "market_cap_total": quote.get("market_cap_total", 0),
+                    "turnover_rate": quote.get("turnover_rate", 0),
+                    "week52_high": quote.get("week52_high", 0),
+                    "week52_low": quote.get("week52_low", 0),
+                    "source": "tencent_finance",
+                }
+        except Exception as e:
+            print(f"[risk valuation tencent hk] {e}", file=sys.stderr)
     else:
         try:
-            tickers = resolve_ticker(clean)
+            tickers = resolve_ticker(ticker)
             quote = fetch_us_stock_realtime(tickers["yahoo"])
             if "error" not in quote:
                 valuation = {
