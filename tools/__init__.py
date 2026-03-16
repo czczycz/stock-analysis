@@ -9,15 +9,15 @@ Internal adapter ``_providers.py`` handles multi-source data fetching.
     get_realtime_quote         — real-time stock quote
     get_technical_indicators   — MA, RSI, support/resistance, trend status
     search_stock_news          — news with impact classification
-    get_sector_rankings        — A-share industry sector rankings
+    is_stock_hot               — check if stock is leading in hot sectors
 
 Internal dependency graph::
 
-    _providers.py               (akshare, yfinance, pandas — data adapters)
+    _providers.py               (INTERNAL — akshare, yfinance, pandas)
     get_daily_history          → _providers
     get_realtime_quote         → _providers
     search_stock_news          → _providers
-    get_sector_rankings        (standalone: akshare)
+    is_stock_hot               (standalone: East Money via requests, Sina fallback)
     get_technical_indicators   → get_daily_history + get_realtime_quote
 """
 
@@ -32,12 +32,12 @@ from tools.get_daily_history import get_daily_history  # noqa: E402
 from tools.get_realtime_quote import get_realtime_quote  # noqa: E402
 from tools.get_technical_indicators import get_technical_indicators  # noqa: E402
 from tools.search_stock_news import search_stock_news  # noqa: E402
-from tools.get_sector_rankings import get_sector_rankings  # noqa: E402
+from tools.is_stock_hot import is_stock_hot  # noqa: E402
 
 __all__ = [
     "get_daily_history",
     "get_realtime_quote",
     "get_technical_indicators",
     "search_stock_news",
-    "get_sector_rankings",
+    "is_stock_hot",
 ]

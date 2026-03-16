@@ -10,15 +10,15 @@
 
 ### 1. 行情识别（Regime Detection）
 
-`strategy_manager.detect_regime()` 根据技术分析阶段输出的 `ma_alignment`、`trend_score`、`volume_status` 三个指标，自动将当前行情归类为以下五种之一：
+`strategy_manager.detect_regime()` 根据技术分析阶段输出的 `ma_alignment`、`trend_score`、`volume_status` 三个指标，以及 `is_stock_hot` 的判定结果，自动将当前行情归类为以下五种之一：
 
 | 行情（regime） | 触发条件 | 匹配策略 |
 |----------------|----------|----------|
+| `sector_hot` | 该股为行业/概念板块前 10 的领涨股（A 股，优先级最高） | dragon_head, emotion_cycle |
 | `trending_up` | 均线多头 + trend_score ≥ 70 | bull_trend, volume_breakout, ma_golden_cross |
 | `trending_down` | 均线空头 + trend_score ≤ 30 | shrink_pullback, bottom_volume |
 | `sideways` | 中性排列 或 35 ≤ trend_score ≤ 65 | box_oscillation, shrink_pullback |
 | `volatile` | 量能异常 + 趋势评分居中 | chan_theory, wave_theory |
-| `sector_hot` | （由 LLM 综合判断触发） | dragon_head, emotion_cycle |
 
 ### 2. 策略匹配
 
@@ -42,9 +42,9 @@ LLM 收到策略后：
 | `get_realtime_quote` | 实时行情 |
 | `get_technical_indicators` | 技术指标（MA / RSI / 支撑阻力） |
 | `search_stock_news` | 新闻搜索 + 情感分类 |
-| `get_sector_rankings` | A 股行业板块排名 |
+| `is_stock_hot` | 判断该股是否为热门板块领涨股 |
 
-在 `full` / `quick` 模式下，Pipeline 已经调用了 `get_technical_indicators`，其输出包含了 `get_daily_history` 和 `get_realtime_quote` 的数据。只有策略额外需要 `search_stock_news` 或 `get_sector_rankings` 时，LLM 才需要单独调用。
+在 `full` / `quick` 模式下，Pipeline 已经调用了 `get_technical_indicators`，其输出包含了 `get_daily_history` 和 `get_realtime_quote` 的数据。只有策略额外需要 `search_stock_news` 或 `is_stock_hot` 时，LLM 才需要单独调用。
 
 ---
 

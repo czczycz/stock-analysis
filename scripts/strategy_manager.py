@@ -94,7 +94,16 @@ def load_all_strategies() -> Dict[str, Dict[str, Any]]:
     return strategies
 
 
-def detect_regime(tech_data: Dict[str, Any]) -> Dict[str, Any]:
+def detect_regime(
+    tech_data: Dict[str, Any],
+    is_hot: bool = False,
+    hot_reason: str = "",
+) -> Dict[str, Any]:
+    """Detect market regime from technical data + optional hot-sector flag.
+
+    Regime priority: sector_hot > trending_up > trending_down > volatile > sideways.
+    ``sector_hot`` triggers when ``is_hot`` is True (determined by ``is_stock_hot`` tool).
+    """
     ma = str(tech_data.get("ma_alignment", "neutral")).lower()
     try:
         ts = float(tech_data.get("trend_score", 50))
@@ -102,7 +111,9 @@ def detect_regime(tech_data: Dict[str, Any]) -> Dict[str, Any]:
         ts = 50.0
     vs = str(tech_data.get("volume_status", "normal")).lower()
 
-    if ma == "bullish" and ts >= 70:
+    if is_hot:
+        regime, reason = "sector_hot", hot_reason or "Stock is leading stock of a hot sector"
+    elif ma == "bullish" and ts >= 70:
         regime, reason = "trending_up", f"MA bullish + trend_score={ts:.0f}"
     elif ma == "bearish" and ts <= 30:
         regime, reason = "trending_down", f"MA bearish + trend_score={ts:.0f}"

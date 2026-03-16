@@ -36,7 +36,7 @@ tools/          ← bottom layer (self-contained, ZERO dependency on scripts/)
   get_realtime_quote.py        — real-time stock quote
   get_technical_indicators.py  — MA, RSI, support/resistance, trend status
   search_stock_news.py         — news with impact classification
-  get_sector_rankings.py       — A-share industry sector rankings
+  is_stock_hot.py              — check if stock is leading in hot sectors
 scripts/        ← upper layer (CLI wrappers, depends on tools/)
   pipeline.py       — orchestrates analysis stages
   *_agent.py        — stage-specific CLI wrappers
@@ -264,7 +264,7 @@ _providers.py               (INTERNAL — akshare, yfinance, pandas)
 get_daily_history          → _providers
 get_realtime_quote         → _providers
 search_stock_news          → _providers
-get_sector_rankings        (standalone: akshare)
+is_stock_hot               (standalone: East Money via requests, Sina fallback)
 get_technical_indicators   → get_daily_history + get_realtime_quote
 ```
 
@@ -276,7 +276,7 @@ get_technical_indicators   → get_daily_history + get_realtime_quote
 | `get_realtime_quote` | `uv run "TD/get_realtime_quote.py" TICKER` | `{name, price, change_pct, volume, pe, pb, …}` |
 | `get_technical_indicators` | `uv run "TD/get_technical_indicators.py" TICKER [--days 120]` | `{ma5, ma10, ma20, rsi, trend_score, trend_status, support_levels, resistance_levels, pattern, …}` |
 | `search_stock_news` | `uv run "TD/search_stock_news.py" TICKER [--limit 10]` | `[{title, content, time, source, url, impact}, …]` — impact: positive / negative / neutral |
-| `get_sector_rankings` | `uv run "TD/get_sector_rankings.py" [--limit 10]` | `[{sector_name, change_percent, turnover_rate, leading_stock}, …]` |
+| `is_stock_hot` | `uv run "TD/is_stock_hot.py" STOCK_NAME` | `{is_hot, matched_sectors: [{sector_name, change_percent, board_type}, …], hot_sectors: […]}` |
 
 ### Using Tools with Strategies
 
@@ -298,14 +298,7 @@ whether entry conditions are met. Example flow:
 > **Note**: In `full` / `quick` modes the pipeline already calls `get_technical_indicators`
 > internally, so `technical` data is available without extra tool calls. Only
 > invoke additional tools when a strategy requires data not present in the
-> pipeline output (e.g. `search_stock_news` or `get_sector_rankings`).
-
-### Unit Tests
-
-```bash
-uv run -m pytest tests/test_tools.py -v          # mock-only (no network)
-uv run -m pytest tests/test_tools.py -v --network # include network tests
-```
+> pipeline output (e.g. `search_stock_news` or `is_stock_hot`).
 
 ---
 
@@ -313,13 +306,13 @@ uv run -m pytest tests/test_tools.py -v --network # include network tests
 
 11 built-in strategies in `strategies/`, auto-selected by market regime:
 
-| Regime | Strategies |
-|--------|------------|
-| trending_up | bull_trend, volume_breakout, ma_golden_cross |
-| trending_down | shrink_pullback, bottom_volume |
-| sideways | box_oscillation, shrink_pullback |
-| volatile | chan_theory, wave_theory |
-| sector_hot | dragon_head, emotion_cycle |
+| Regime | Trigger | Strategies |
+|--------|---------|------------|
+| sector_hot | Stock is leading stock of a top-10 sector (A-share only, highest priority) | dragon_head, emotion_cycle |
+| trending_up | MA bullish + trend_score ≥ 70 | bull_trend, volume_breakout, ma_golden_cross |
+| trending_down | MA bearish + trend_score ≤ 30 | shrink_pullback, bottom_volume |
+| sideways | neutral or 35 ≤ trend_score ≤ 65 | box_oscillation, shrink_pullback |
+| volatile | heavy volume + mixed trend_score | chan_theory, wave_theory |
 
 ### Custom Strategies
 

@@ -63,8 +63,32 @@ def _run_risk(ticker: str, _ctx: dict) -> dict:
 
 def _run_strategy(ticker: str, ctx: dict) -> dict:
     from strategy_manager import detect_regime, load_all_strategies
+    from tools import is_stock_hot
+    from tools._providers import is_a_share
+
     tech_data = ctx.get("technical", {})
-    regime_info = detect_regime(tech_data if "_error" not in tech_data else {})
+
+    is_hot = False
+    hot_reason = ""
+    if is_a_share(ticker):
+        stock_name = ""
+        if "_error" not in tech_data:
+            stock_name = tech_data.get("realtime_quote", {}).get("name", "")
+        if stock_name:
+            try:
+                hot_result = is_stock_hot(stock_name)
+                is_hot = hot_result.get("is_hot", False)
+                if is_hot:
+                    sectors = [s["sector_name"] for s in hot_result["matched_sectors"]]
+                    hot_reason = f"Leading stock in: {', '.join(sectors)}"
+            except Exception as e:
+                print(f"[strategy/is_stock_hot] {e}", file=sys.stderr)
+
+    regime_info = detect_regime(
+        tech_data if "_error" not in tech_data else {},
+        is_hot=is_hot,
+        hot_reason=hot_reason,
+    )
     strategies = load_all_strategies()
     recommended = []
     for name in regime_info["recommended_strategies"][:3]:
