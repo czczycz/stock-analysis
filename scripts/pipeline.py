@@ -1,4 +1,5 @@
 # /// script
+# requires-python = ">=3.10"
 # dependencies = ['akshare', 'yfinance', 'pandas', 'numpy', 'scipy', 'pyyaml']
 # ///
 # NOTE: akshare is still needed here because intel_agent and risk_agent
