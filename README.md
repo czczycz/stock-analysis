@@ -24,19 +24,32 @@ The agent runs the pipeline and returns a formatted Decision Dashboard. Here is 
 <summary>📊 Sample Output — Kweichow Moutai (600519)</summary>
 
 ```markdown
-# Kweichow Moutai (600519) Analysis Report
+# Kweichow Moutai (600519) — Decision Dashboard
+
+> Short-term pressure, executive risk event pending digestion
+
+## 📊 Score: 38/100 | 🟡 Hold | Confidence: Medium
+
+---
 
 ## 🎯 Core Conclusion
 
-| Item | Detail |
-|------|--------|
-| Summary | Short-term pressure, executive risk event pending digestion |
-| Signal | 🟡 Hold Signal |
-| Decision | **Hold** — Confidence: Medium |
-| Sentiment | 38 / 100 |
+| | Advice |
+|---|---|
+| ⏰ Time Sensitivity | Wait 3-5 trading days for risk event to be digested |
+| 🈳 No Position | Watch for stabilization at 1380 support before entry |
+| 📦 Holding | Hold for now; consider reducing if price breaks below 1380 |
 
-**No position**: Wait for negative news to be absorbed; watch for stabilization at 1380 support
-**Holding**: Hold for now; consider reducing if price breaks below 1380
+---
+
+## ⚔️ Battle Plan
+
+| Level | Price |
+|-------|-------|
+| 🎯 Ideal Buy | 1380 (box bottom support) |
+| 🔄 Secondary Buy | 1400 (near MA5) |
+| 🛑 Stop Loss | 1320 (below box range) |
+| 🏁 Take Profit | 1500 (near MA20 resistance) |
 
 ---
 
@@ -75,14 +88,7 @@ The following strategies were applied:
 
 ---
 
-## 🎯 Battle Plan
-
-| Level | Price |
-|-------|-------|
-| Ideal Buy | 1380 (box bottom support) |
-| Secondary Buy | 1400 (near MA5) |
-| Stop Loss | 1320 (below box range) |
-| Take Profit | 1500 (near MA20 resistance) |
+## ⚠️ Risk Warning
 
 ⚠️ AI-generated content for reference only. Not investment advice.
 ```

@@ -29,6 +29,7 @@ if __name__ == "__main__":
         pass
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 OUTPUT_SCHEMA = {
     "risk_level": "high|medium|low|none",
@@ -71,78 +72,38 @@ def _filter_news_by_category(news_items: list, keywords: list) -> list:
 
 
 def fetch_risk_data(ticker: str) -> dict:
-    """Fetch risk-specific data from AkShare/Tencent/yfinance."""
-    from data_provider import (
-        is_a_share, is_hk_stock, fetch_a_share_news, fetch_us_stock_news,
-        fetch_a_share_realtime, fetch_hk_realtime, fetch_us_stock_realtime,
-        resolve_ticker,
-    )
+    """Fetch risk-specific data via shared tools layer."""
+    from tools import search_stock_news, get_realtime_quote
 
-    clean = ticker.strip().split(".")[0]
-    all_news = []
+    all_news = search_stock_news(ticker, limit=20)
+    raw_news = [{"title": n.get("title", ""), "content": n.get("content", ""),
+                 "time": n.get("time", ""), "source": n.get("source", ""),
+                 "url": n.get("url", "")}
+                for n in all_news]
 
-    if is_a_share(clean):
-        try:
-            all_news = fetch_a_share_news(clean, limit=20)
-        except Exception as e:
-            print(f"[risk news] {e}", file=sys.stderr)
-    else:
-        try:
-            tickers = resolve_ticker(ticker)
-            all_news = fetch_us_stock_news(tickers["yahoo"], limit=20)
-        except Exception as e:
-            print(f"[risk news] {e}", file=sys.stderr)
+    insider = _filter_news_by_category(raw_news, RISK_CATEGORIES["insider"])[:3]
+    earnings = _filter_news_by_category(raw_news, RISK_CATEGORIES["earnings"])[:3]
+    regulatory = _filter_news_by_category(raw_news, RISK_CATEGORIES["regulatory"])[:3]
+    lockup = _filter_news_by_category(raw_news, RISK_CATEGORIES["lockup"])[:2]
+    industry = _filter_news_by_category(raw_news, RISK_CATEGORIES["industry"])[:2]
 
-    insider = _filter_news_by_category(all_news, RISK_CATEGORIES["insider"])[:3]
-    earnings = _filter_news_by_category(all_news, RISK_CATEGORIES["earnings"])[:3]
-    regulatory = _filter_news_by_category(all_news, RISK_CATEGORIES["regulatory"])[:3]
-    lockup = _filter_news_by_category(all_news, RISK_CATEGORIES["lockup"])[:2]
-    industry = _filter_news_by_category(all_news, RISK_CATEGORIES["industry"])[:2]
-
-    valuation = {}
-    if is_a_share(clean):
-        try:
-            quote = fetch_a_share_realtime(clean)
-            if "error" not in quote:
-                valuation = {
-                    "pe_ratio": quote.get("pe_ratio", 0),
-                    "pb_ratio": quote.get("pb_ratio", 0),
-                    "market_cap_total": quote.get("market_cap_total", 0),
-                    "turnover_rate": quote.get("turnover_rate", 0),
-                    "source": "tencent_finance",
-                }
-        except Exception as e:
-            print(f"[risk valuation tencent] {e}", file=sys.stderr)
-    elif is_hk_stock(ticker):
-        try:
-            quote = fetch_hk_realtime(ticker)
-            if "error" not in quote:
-                valuation = {
-                    "pe_ratio": quote.get("pe_ratio", 0),
-                    "pb_ratio": quote.get("pb_ratio", 0),
-                    "market_cap_total": quote.get("market_cap_total", 0),
-                    "turnover_rate": quote.get("turnover_rate", 0),
-                    "week52_high": quote.get("week52_high", 0),
-                    "week52_low": quote.get("week52_low", 0),
-                    "source": "tencent_finance",
-                }
-        except Exception as e:
-            print(f"[risk valuation tencent hk] {e}", file=sys.stderr)
-    else:
-        try:
-            tickers = resolve_ticker(ticker)
-            quote = fetch_us_stock_realtime(tickers["yahoo"])
-            if "error" not in quote:
-                valuation = {
-                    "pe_ratio": quote.get("pe_ratio", 0),
-                    "pb_ratio": quote.get("pb_ratio", 0),
-                    "market_cap": quote.get("market_cap", 0),
-                    "fifty_two_week_high": quote.get("fifty_two_week_high", 0),
-                    "fifty_two_week_low": quote.get("fifty_two_week_low", 0),
-                    "source": "yfinance",
-                }
-        except Exception as e:
-            print(f"[risk valuation yfinance] {e}", file=sys.stderr)
+    valuation: dict = {}
+    try:
+        quote = get_realtime_quote(ticker)
+        if "error" not in quote:
+            valuation = {
+                "pe_ratio": quote.get("pe_ratio", 0),
+                "pb_ratio": quote.get("pb_ratio", 0),
+                "source": quote.get("source", ""),
+            }
+            for key in ("market_cap_total", "market_cap", "turnover_rate",
+                        "week52_high", "week52_low",
+                        "fifty_two_week_high", "fifty_two_week_low"):
+                v = quote.get(key)
+                if v is not None and v != 0:
+                    valuation[key] = v
+    except Exception as e:
+        print(f"[risk valuation] {e}", file=sys.stderr)
 
     return {
         "insider_activity": insider,

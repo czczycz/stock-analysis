@@ -7,7 +7,7 @@ description: 检测一阳夹三阴K线整理形态，趋势延续入场信号。
 category: pattern
 required_tools:
   - get_daily_history
-  - analyze_trend
+  - get_technical_indicators
 
 instructions: |
   **一阳夹三阴（One Yang Three Yin Strategy）**
@@ -25,7 +25,7 @@ instructions: |
 
   1. 使用 `get_daily_history` 获取最近 10 日数据。
   2. 检查最后 5 根K线是否符合上述形态。
-  3. 使用 `analyze_trend` 确认多头排列（关联理念2：趋势交易，MA5 > MA10 > MA20）。
+  3. 使用 `get_technical_indicators` 确认多头排列（关联理念2：趋势交易，MA5 > MA10 > MA20）。
 
   评分调整：
   - 形态成立 + 趋势看多：sentiment_score +15

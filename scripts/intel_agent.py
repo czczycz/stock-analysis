@@ -28,6 +28,7 @@ if __name__ == "__main__":
         pass
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 OUTPUT_SCHEMA = {
     "signal": "strong_buy|buy|hold|sell|strong_sell",
@@ -85,38 +86,32 @@ def _classify_news(items: list) -> dict:
 
 
 def fetch_intel(ticker: str) -> dict:
-    """Fetch news and intelligence from AkShare (A-share) or yfinance (US/HK/Global)."""
-    from data_provider import is_a_share, fetch_a_share_news, fetch_us_stock_news, resolve_ticker
+    """Fetch news and intelligence via shared tools layer."""
+    from tools import search_stock_news
 
-    all_news = []
-    clean = ticker.strip().split(".")[0]
+    all_news = search_stock_news(ticker, limit=15)
 
-    if is_a_share(clean):
-        try:
-            all_news = fetch_a_share_news(clean, limit=15)
-        except Exception as e:
-            print(f"[akshare news] {e}", file=sys.stderr)
-    else:
-        try:
-            tickers = resolve_ticker(ticker)
-            all_news = fetch_us_stock_news(tickers["yahoo"], limit=15)
-        except Exception as e:
-            print(f"[yfinance news] {e}", file=sys.stderr)
+    risk_alerts = [n["title"] for n in all_news if n["impact"] == "negative"][:5]
+    positive_catalysts = [n["title"] for n in all_news if n["impact"] == "positive"][:5]
 
-    classification = _classify_news(all_news)
+    classified = [{"title": n["title"], "impact": n["impact"],
+                   "time": n["time"], "source": n["source"]}
+                  for n in all_news]
 
-    general_news = classification["classified_news"][:5]
-    research = [n for n in classification["classified_news"] if
-                any(kw in n.get("title", "") for kw in ["研报", "机构", "评级", "研究", "analyst", "rating", "upgrade"])][:3]
-    announcements = [n for n in classification["classified_news"] if
-                     any(kw in n.get("title", "") for kw in ["公告", "业绩", "财报", "earnings", "announcement"])][:3]
+    general_news = classified[:5]
+    research = [n for n in classified if
+                any(kw in n.get("title", "") for kw in
+                    ["研报", "机构", "评级", "研究", "analyst", "rating", "upgrade"])][:3]
+    announcements = [n for n in classified if
+                     any(kw in n.get("title", "") for kw in
+                         ["公告", "业绩", "财报", "earnings", "announcement"])][:3]
 
     return {
         "general_news": general_news,
         "research_reports": research,
         "announcements": announcements,
-        "risk_alerts": classification["risk_alerts"],
-        "positive_catalysts": classification["positive_catalysts"],
+        "risk_alerts": risk_alerts,
+        "positive_catalysts": positive_catalysts,
         "total_items": len(all_news),
     }
 

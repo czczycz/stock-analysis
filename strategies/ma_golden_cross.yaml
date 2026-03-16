@@ -7,7 +7,7 @@ description: 检测均线金叉配合量能确认信号，经典的趋势反转/
 category: trend
 required_tools:
   - get_daily_history
-  - analyze_trend
+  - get_technical_indicators
 
 instructions: |
   **均线金叉（MA Golden Cross Strategy）**
@@ -15,7 +15,7 @@ instructions: |
   信号判定标准：
 
   1. **金叉检测**（关联理念2：趋势交易）：
-     - 使用 `analyze_trend` 检查均线排列和 MACD 状态。
+     - 使用 `get_technical_indicators` 检查均线排列和 MACD 状态。
      - 主信号：MA5 在最近 3 个交易日内上穿 MA10。
      - 强信号：MA10 上穿 MA20（更慢但更可靠）。
      - 检查 MACD 状态是否为金叉或零轴上方金叉。

@@ -39,6 +39,7 @@ def _ensure_utf8_io():
 
 _ensure_utf8_io()
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # ---------------------------------------------------------------------------
@@ -46,10 +47,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 # ---------------------------------------------------------------------------
 
 def _run_technical(ticker: str, _ctx: dict) -> dict:
-    from technical_agent import _fetch_history, _fetch_realtime, compute_technical_data
-    realtime = _fetch_realtime(ticker)
-    df = _fetch_history(ticker)
-    return compute_technical_data(df, realtime)
+    from tools import get_technical_indicators
+    return get_technical_indicators(ticker)
 
 
 def _run_intel(ticker: str, _ctx: dict) -> dict:

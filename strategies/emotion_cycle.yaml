@@ -8,7 +8,7 @@ category: framework
 required_tools:
   - get_daily_history
   - get_realtime_quote
-  - analyze_trend
+  - get_technical_indicators
   - search_stock_news
 
 instructions: |
@@ -41,7 +41,7 @@ instructions: |
   - 散户论坛/社交媒体情绪极端负面 → 反向指标，可能接近底部。
 
   ### 第四步：均线收缩与波动率
-  使用 `analyze_trend`：
+  使用 `get_technical_indicators`：
   - MA5/MA10/MA20 三线粘合（均线收缩）→ 蓄势，方向待定，情绪冷淡。
   - 波动率降至低位（ATR 萎缩）→ 情绪极度低迷，蓄势爆发前兆。
 
