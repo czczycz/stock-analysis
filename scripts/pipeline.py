@@ -19,27 +19,12 @@ Built-in modes:
   technical  — Technical only
 """
 
-import io
 import json
 import sys
 import argparse
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
-
-def _ensure_utf8_io():
-    for name in ("stdout", "stderr"):
-        stream = getattr(sys, name, None)
-        if stream and hasattr(stream, "reconfigure"):
-            try:
-                stream.reconfigure(encoding="utf-8", errors="replace")
-            except (AttributeError, OSError):
-                pass
-
-
-_ensure_utf8_io()
-sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from _bootstrap import bootstrap; bootstrap()  # noqa: E702
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +178,7 @@ class PipelineManager:
     def run(self, ticker: str, mode: str = "full") -> dict:
         if mode not in self._modes:
             return {
-                "error": f"Unknown mode '{mode}'",
+                "_error": f"Unknown mode '{mode}'",
                 "available_modes": list(self._modes),
             }
 

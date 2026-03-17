@@ -13,17 +13,11 @@ Faithfully reproduces the Decision Dashboard output format from the
 original project's orchestrator + DecisionAgent.
 """
 
-import io
 import json
 import sys
 import argparse
 
-if __name__ == "__main__":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except (AttributeError, OSError):
-        pass
+from _bootstrap import bootstrap; bootstrap()  # noqa: E702
 
 _CANONICAL_SIGNAL = {"strong_buy": "buy", "buy": "buy", "hold": "hold", "sell": "sell", "strong_sell": "sell"}
 
@@ -293,7 +287,7 @@ def cmd_normalize(args):
     try:
         raw = json.loads(args.dashboard_json)
     except json.JSONDecodeError as e:
-        print(json.dumps({"error": str(e)}))
+        print(json.dumps({"_error": str(e)}))
         sys.exit(1)
     result = normalize_dashboard(raw)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -305,7 +299,7 @@ def cmd_risk_override(args):
         risk_opinion = json.loads(args.risk_json)
         risk_flags = json.loads(args.flags_json) if args.flags_json else []
     except json.JSONDecodeError as e:
-        print(json.dumps({"error": str(e)}))
+        print(json.dumps({"_error": str(e)}))
         sys.exit(1)
     result = apply_risk_override(dashboard, risk_opinion, risk_flags)
     print(json.dumps(result, ensure_ascii=False, indent=2))

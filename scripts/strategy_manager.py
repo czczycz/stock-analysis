@@ -15,19 +15,13 @@ Commands:
 Strategy files are loaded from strategies/ and custom_strategies/ directories.
 """
 
-import io
 import json
 import sys
 import argparse
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-if __name__ == "__main__":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except (AttributeError, OSError):
-        pass
+from _bootstrap import bootstrap; bootstrap()  # noqa: E702
 
 try:
     import yaml
@@ -129,7 +123,7 @@ def detect_regime(
 
 def aggregate_evaluations(evaluations: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not evaluations:
-        return {"error": "No evaluations provided"}
+        return {"_error": "No evaluations provided"}
 
     weights = [max(0.1, float(ev.get("confidence", 0.5))) for ev in evaluations]
     total_w = sum(weights)
@@ -181,7 +175,7 @@ def cmd_load(args):
     for name in args.names:
         s = strategies.get(name)
         if not s:
-            results.append({"name": name, "error": "not found"}) if args.json else print(f"Not found: {name}", file=sys.stderr)
+            results.append({"name": name, "_error": "not found"}) if args.json else print(f"Not found: {name}", file=sys.stderr)
             continue
         entry = {"name": s["name"], "display_name": s.get("display_name", ""), "description": s.get("description", ""), "category": s.get("category", "trend"), "instructions": s.get("instructions", ""), "required_tools": s.get("required_tools", [])}
         if args.json:
@@ -199,7 +193,7 @@ def cmd_recommend(args):
     try:
         tech_data = json.loads(args.tech_json)
     except json.JSONDecodeError as e:
-        print(json.dumps({"error": str(e)}))
+        print(json.dumps({"_error": str(e)}))
         sys.exit(1)
 
     regime_result = detect_regime(tech_data)
@@ -213,7 +207,7 @@ def cmd_aggregate(args):
     try:
         evaluations = json.loads(args.evaluations_json)
     except json.JSONDecodeError as e:
-        print(json.dumps({"error": str(e)}))
+        print(json.dumps({"_error": str(e)}))
         sys.exit(1)
     if not isinstance(evaluations, list):
         evaluations = [evaluations]

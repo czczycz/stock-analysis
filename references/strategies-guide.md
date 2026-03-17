@@ -1,6 +1,6 @@
-# 交易策略目录
+# Strategies Guide
 
-本目录存放**内置策略文件**（YAML 格式）。Pipeline 的 `strategy` 阶段自动加载并匹配策略。
+本文档详细介绍策略系统的工作原理、内置策略清单以及自定义策略的编写方法。
 
 ## 策略如何工作
 
@@ -45,6 +45,24 @@ LLM 收到策略后：
 | `is_stock_hot` | 判断该股是否为热门板块领涨股 |
 
 在 `full` / `quick` 模式下，Pipeline 已经调用了 `get_technical_indicators`，其输出包含了 `get_daily_history` 和 `get_realtime_quote` 的数据。只有策略额外需要 `search_stock_news` 或 `is_stock_hot` 时，LLM 才需要单独调用。
+
+---
+
+## 内置策略一览
+
+| ID | 名称 | 分类 | 适用行情 |
+|----|------|------|----------|
+| bull_trend | 默认多头趋势 | trend | trending_up |
+| shrink_pullback | 缩量回踩 | trend | trending_down, sideways |
+| volume_breakout | 放量突破 | trend | trending_up |
+| ma_golden_cross | 均线金叉 | trend | trending_up |
+| box_oscillation | 箱体震荡 | framework | sideways |
+| bottom_volume | 底部放量 | reversal | trending_down |
+| dragon_head | 龙头策略 | trend | sector_hot |
+| emotion_cycle | 情绪周期 | framework | sector_hot |
+| chan_theory | 缠论 | framework | volatile |
+| wave_theory | 波浪理论 | framework | volatile |
+| one_yang_three_yin | 一阳夹三阴 | pattern | - |
 
 ---
 
@@ -94,21 +112,3 @@ instructions: |
   评分调整：
   - 满足条件时建议的 sentiment_score 调整
 ```
-
----
-
-## 内置策略一览
-
-| ID | 名称 | 分类 | 适用行情 |
-|----|------|------|----------|
-| bull_trend | 默认多头趋势 | trend | trending_up |
-| shrink_pullback | 缩量回踩 | trend | trending_down, sideways |
-| volume_breakout | 放量突破 | trend | trending_up |
-| ma_golden_cross | 均线金叉 | trend | trending_up |
-| box_oscillation | 箱体震荡 | framework | sideways |
-| bottom_volume | 底部放量 | reversal | trending_down |
-| dragon_head | 龙头策略 | trend | sector_hot |
-| emotion_cycle | 情绪周期 | framework | sector_hot |
-| chan_theory | 缠论 | framework | volatile |
-| wave_theory | 波浪理论 | framework | volatile |
-| one_yang_three_yin | 一阳夹三阴 | pattern | - |

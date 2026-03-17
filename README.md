@@ -10,9 +10,8 @@ An AI agent skill for multi-strategy stock analysis. Produces a structured **Dec
 
 ## Quick Start
 
-1. Install [uv](https://docs.astral.sh/uv/)
-2. Place this skill directory where your agent can access it
-3. Ask the agent to analyze any stock:
+1. Place this skill directory where your agent can access it
+2. Ask the agent to analyze any stock:
 
 ```
 Analyze 600519 for me
@@ -151,7 +150,7 @@ instructions: |
   Entry criteria, exit rules, position sizing...
 ```
 
-See [`strategies/README.md`](strategies/README.md) for the full template.
+See [`references/strategies-guide.md`](references/strategies-guide.md) for the full template.
 
 ## Disclaimer
 

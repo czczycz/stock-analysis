@@ -15,21 +15,11 @@ Data sources:
   - yfinance: US/Global fundamentals and news
 """
 
-import io
 import json
 import sys
 import argparse
-from pathlib import Path
 
-if __name__ == "__main__":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except (AttributeError, OSError):
-        pass
-
-sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from _bootstrap import bootstrap; bootstrap()  # noqa: E702
 
 OUTPUT_SCHEMA = {
     "risk_level": "high|medium|low|none",
@@ -90,7 +80,7 @@ def fetch_risk_data(ticker: str) -> dict:
     valuation: dict = {}
     try:
         quote = get_realtime_quote(ticker)
-        if "error" not in quote:
+        if "_error" not in quote:
             valuation = {
                 "pe_ratio": quote.get("pe_ratio", 0),
                 "pb_ratio": quote.get("pb_ratio", 0),

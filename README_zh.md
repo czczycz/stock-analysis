@@ -11,9 +11,8 @@
 
 ## 快速开始
 
-1. 安装 [uv](https://docs.astral.sh/uv/)
-2. 将本 Skill 目录放置在 Agent 可访问的路径下
-3. 让 Agent 分析任意股票：
+1. 将本 Skill 目录放置在 Agent 可访问的路径下
+2. 让 Agent 分析任意股票：
 
 ```
 帮我分析一下 600519
@@ -152,7 +151,7 @@ instructions: |
   入场条件、出场规则、仓位管理...
 ```
 
-完整模板请参考 [`strategies/README.md`](strategies/README.md)。
+完整模板请参考 [`references/strategies-guide.md`](references/strategies-guide.md)。
 
 ## 免责声明
 

@@ -144,105 +144,82 @@ def _tencent_quote_raw(tencent_code: str) -> str | None:
     return None
 
 
-def fetch_a_share_realtime(code: str) -> Dict[str, Any]:
-    """Fetch real-time A-share quote from Tencent Finance."""
+def _parse_tencent_quote(
+    code: str,
+    float_fields: Dict[str, int],
+    str_fields: Dict[str, tuple] | None = None,
+) -> Dict[str, Any]:
+    """Generic Tencent Finance quote parser.
+
+    ``float_fields`` maps output key → field index.
+    ``str_fields`` maps output key → (index, default) for string values.
+    """
     tickers = resolve_ticker(code)
     tencent_code = tickers.get("tencent", "")
     if not tencent_code:
-        return {"error": f"Cannot resolve {code} for Tencent Finance"}
+        return {"_error": f"Cannot resolve {code} for Tencent Finance"}
 
     resp = _tencent_quote_raw(tencent_code)
     if resp is None:
-        return {"error": f"Tencent Finance request failed after retries"}
+        return {"_error": "Tencent Finance request failed after retries"}
 
     m = re.search(r'"([^"]+)"', resp)
     if not m:
-        return {"error": "Failed to parse Tencent Finance response"}
+        return {"_error": "Failed to parse Tencent Finance response"}
 
     fields = m.group(1).split("~")
     if len(fields) < 50:
-        return {"error": f"Unexpected field count: {len(fields)}"}
+        return {"_error": f"Unexpected field count: {len(fields)}"}
 
-    def _sf(idx, default=0.0):
+    def _sf(idx: int, default: float = 0.0) -> float:
         try:
             return float(fields[idx])
         except (IndexError, ValueError):
             return default
 
-    return {
+    result: Dict[str, Any] = {
         "name": fields[1] if len(fields) > 1 else "",
         "code": fields[2] if len(fields) > 2 else code,
-        "price": _sf(3),
-        "yesterday_close": _sf(4),
-        "open": _sf(5),
-        "volume_lots": _sf(6),
-        "high": _sf(33),
-        "low": _sf(34),
-        "volume_lots_2": _sf(36),
-        "amount_wan": _sf(37),
-        "turnover_rate": _sf(38),
-        "pe_ratio": _sf(39),
-        "amplitude": _sf(43),
-        "market_cap_circulating": _sf(44),
-        "market_cap_total": _sf(45),
-        "pb_ratio": _sf(46),
-        "upper_limit": _sf(47),
-        "lower_limit": _sf(48),
-        "volume_ratio": _sf(49),
-        "change_amount": _sf(31),
-        "change_percent": _sf(32),
-        "source": "tencent_finance",
     }
+    for key, idx in float_fields.items():
+        result[key] = _sf(idx)
+    if str_fields:
+        for key, (idx, default) in str_fields.items():
+            result[key] = fields[idx] if len(fields) > idx else default
+    result["source"] = "tencent_finance"
+    return result
+
+
+_A_SHARE_FLOAT_FIELDS: Dict[str, int] = {
+    "price": 3, "yesterday_close": 4, "open": 5, "volume_lots": 6,
+    "high": 33, "low": 34, "volume_lots_2": 36, "amount_wan": 37,
+    "turnover_rate": 38, "pe_ratio": 39, "amplitude": 43,
+    "market_cap_circulating": 44, "market_cap_total": 45, "pb_ratio": 46,
+    "upper_limit": 47, "lower_limit": 48, "volume_ratio": 49,
+    "change_amount": 31, "change_percent": 32,
+}
+
+_HK_FLOAT_FIELDS: Dict[str, int] = {
+    "price": 3, "yesterday_close": 4, "open": 5, "volume": 6,
+    "high": 33, "low": 34, "amount": 37, "pe_ratio": 39,
+    "amplitude": 43, "market_cap_circulating": 44, "market_cap_total": 45,
+    "turnover_rate": 50, "pb_ratio": 58, "week52_high": 48, "week52_low": 49,
+    "change_amount": 31, "change_percent": 32,
+}
+
+_HK_STR_FIELDS: Dict[str, tuple] = {
+    "currency": (75, "HKD"),
+}
+
+
+def fetch_a_share_realtime(code: str) -> Dict[str, Any]:
+    """Fetch real-time A-share quote from Tencent Finance."""
+    return _parse_tencent_quote(code, _A_SHARE_FLOAT_FIELDS)
 
 
 def fetch_hk_realtime(code: str) -> Dict[str, Any]:
     """Fetch real-time HK stock quote from Tencent Finance."""
-    tickers = resolve_ticker(code)
-    tencent_code = tickers.get("tencent", "")
-    if not tencent_code:
-        return {"error": f"Cannot resolve {code} for Tencent Finance HK"}
-
-    resp = _tencent_quote_raw(tencent_code)
-    if resp is None:
-        return {"error": "Tencent Finance HK request failed after retries"}
-
-    m = re.search(r'"([^"]+)"', resp)
-    if not m:
-        return {"error": "Failed to parse Tencent Finance HK response"}
-
-    fields = m.group(1).split("~")
-    if len(fields) < 50:
-        return {"error": f"Unexpected field count: {len(fields)}"}
-
-    def _sf(idx, default=0.0):
-        try:
-            return float(fields[idx])
-        except (IndexError, ValueError):
-            return default
-
-    return {
-        "name": fields[1] if len(fields) > 1 else "",
-        "code": fields[2] if len(fields) > 2 else code,
-        "price": _sf(3),
-        "yesterday_close": _sf(4),
-        "open": _sf(5),
-        "volume": _sf(6),
-        "high": _sf(33),
-        "low": _sf(34),
-        "amount": _sf(37),
-        "pe_ratio": _sf(39),
-        "amplitude": _sf(43),
-        "market_cap_circulating": _sf(44),
-        "market_cap_total": _sf(45),
-        "turnover_rate": _sf(50),
-        "pb_ratio": _sf(58),
-        "week52_high": _sf(48),
-        "week52_low": _sf(49),
-        "change_amount": _sf(31),
-        "change_percent": _sf(32),
-        "currency": fields[75] if len(fields) > 75 else "HKD",
-        "source": "tencent_finance",
-    }
+    return _parse_tencent_quote(code, _HK_FLOAT_FIELDS, _HK_STR_FIELDS)
 
 
 def fetch_us_stock_realtime(ticker: str) -> Dict[str, Any]:
@@ -271,7 +248,7 @@ def fetch_us_stock_realtime(ticker: str) -> Dict[str, Any]:
             "source": "yfinance",
         }
     except Exception as e:
-        return {"error": f"yfinance quote failed: {e}"}
+        return {"_error": f"yfinance quote failed: {e}"}
 
 
 def fetch_realtime(code: str) -> Dict[str, Any]:

@@ -1,13 +1,12 @@
 ---
-name: stock_analysis
+name: stock-analysis
 description: >
   Multi-strategy stock analysis producing a structured Decision Dashboard.
-  Configurable pipeline modes: full / quick / news / technical.
-  Supports A-shares, HK, and US equities. 11 built-in trading strategies
-  plus user-defined custom strategies. No API keys required.
-license: Apache-2.0
-compatibility: Python 3.10+, uv | Windows, Linux, macOS
-allowed-tools: Read Shell(uv run *, python *)
+  Use when user asks to "analyze a stock", "分析股票", "evaluate TICKER",
+  "give me a buy/sell signal", "股票决策", or mentions stock codes like
+  "601919", "AAPL", "00700.HK". Supports A-shares, HK, and US equities.
+  11 built-in strategies, 4 pipeline modes (full/quick/news/technical).
+  No API keys required.
 ---
 
 # Stock Analysis
@@ -20,7 +19,6 @@ Technical → Intel → Risk → Strategy → Decision
 ```
 
 **Zero configuration** — free, keyless data sources (Tencent Finance, AkShare, yfinance).
-Works on **Windows, Linux, and macOS**.
 
 ## Prerequisites
 
@@ -30,17 +28,10 @@ Works on **Windows, Linux, and macOS**.
 ## Architecture
 
 ```
-tools/          ← bottom layer (self-contained, ZERO dependency on scripts/)
-  _providers.py                — INTERNAL: data source adapters (Tencent/AkShare/yfinance)
-  get_daily_history.py         — historical K-line OHLCV data
-  get_realtime_quote.py        — real-time stock quote
-  get_technical_indicators.py  — MA, RSI, support/resistance, trend status
-  search_stock_news.py         — news with impact classification
-  is_stock_hot.py              — check if stock is leading in hot sectors
-scripts/        ← upper layer (CLI wrappers, depends on tools/)
-  pipeline.py       — orchestrates analysis stages
-  *_agent.py        — stage-specific CLI wrappers
-strategies/     ← YAML strategy definitions (reference tools by name in required_tools)
+tools/       ← bottom layer
+scripts/     ← upper layer (CLI wrappers, depends on tools/)
+strategies/  ← YAML strategy definitions
+references/  ← detailed docs loaded on demand
 ```
 
 ## Path Convention
@@ -74,19 +65,15 @@ uv run "SD/pipeline.py" modes
 | `news` | Intel → Risk | Sentiment & risk screening only |
 | `technical` | Technical | Indicators only |
 
-Users can register custom modes programmatically via `PipelineManager.register_mode()`.
-
 ### Output Keys
-
-The JSON returned by `analyze` contains:
 
 | Key | Content |
 |-----|---------|
-| `technical` | MA5/10/20, RSI-14, volume ratio, trend score, support/resistance, K-line pattern, recent history |
+| `technical` | MA, RSI, volume ratio, trend score, support/resistance, K-line pattern |
 | `intel` | News headlines, risk alerts, positive catalysts |
-| `risk` | Risk categories (insider/earnings/regulatory/lockup/industry), PE/PB valuation |
-| `strategy` | Detected market regime, up to 3 recommended strategies with full instructions |
-| `dashboard_schema` | Decision Dashboard JSON schema for output reference |
+| `risk` | Risk categories, PE/PB valuation |
+| `strategy` | Detected market regime, up to 3 recommended strategies |
+| `dashboard_schema` | Decision Dashboard JSON schema |
 
 Keys only appear for stages included in the selected mode.
 
@@ -101,204 +88,37 @@ uv run "SD/pipeline.py" schema    # Print Decision Dashboard JSON schema
 ## LLM Task
 
 After calling `pipeline.py analyze`, interpret ALL returned data and produce
-the final answer as a **formatted Markdown report** using the template below.
+the final answer as a **formatted Markdown report**.
 
-### Interpretation Rules
+**Signal weighting** (without strategies): Technical 40 %, Intel 30 %, Risk 30 %.
+With strategies: Technical 30 %, Intel 25 %, Risk 25 %, Strategy 20 %.
 
-**Signal weighting** (without strategies): Technical 40%, Intel 30%, Risk 30%.
-With strategies: Technical 30%, Intel 25%, Risk 25%, Strategy 20%.
-
-**Scoring**: 80–100 buy (high conviction), 60–79 buy, 40–59 hold, 20–39 sell, 0–19 sell (major risk).
+**Scoring**: 80–100 buy (high conviction) / 60–79 buy / 40–59 hold / 20–39 sell / 0–19 sell (major risk).
 
 **Risk veto**: If any risk flag has severity "high" or `veto_buy: true`, cap the final signal at "hold".
 
-**Strategy evaluation**: For each recommended strategy, check whether entry
-conditions are met against the technical data. Adjust the score accordingly.
+**Strategy evaluation**: For each recommended strategy, check entry conditions
+against the technical data and adjust the score accordingly.
 
-### Output Template
-
-Replace all `{...}` placeholders with real values. Omit sections with no data.
-
----BEGIN TEMPLATE---
-
-```markdown
-# {stock_name} — 决策看板
-
-> {one_sentence_conclusion}
-
-## 📊 综合评分：{sentiment_score}/100 | {signal_type} | 置信度：{confidence_level}
-
-{analysis_summary}
+> Read `references/output-template.md` for the full Decision Dashboard
+> Markdown template with all placeholders.
 
 ---
 
-## 🎯 核心结论
+## Tools
 
-| | 建议 |
-|---|---|
-| ⏰ 时效性 | {time_sensitivity} |
-| 🈳 空仓 | {no_position_advice} |
-| 📦 持仓 | {has_position_advice} |
+Five tools under `tools/`, each runnable standalone via `uv run "TD/<name>.py"`:
 
----
+| Tool | Purpose |
+|------|---------|
+| `get_daily_history` | Historical OHLCV K-line data |
+| `get_realtime_quote` | Real-time stock quote |
+| `get_technical_indicators` | MA, RSI, support/resistance, trend status |
+| `search_stock_news` | News with impact classification |
+| `is_stock_hot` | Check if stock is leading in hot sectors |
 
-## ⚔️ 作战计划
-
-### 狙击点位
-
-| 点位 | 价格 |
-|------|------|
-| 🎯 理想买点 | {ideal_buy} |
-| 🔄 次优买点 | {secondary_buy} |
-| 🛑 止损位 | {stop_loss} |
-| 🏁 止盈位 | {take_profit} |
-
-### 仓位策略
-
-| | 内容 |
-|---|---|
-| 建议仓位 | {suggested_position} |
-| 入场计划 | {entry_plan} |
-| 风控措施 | {risk_control} |
-
-### 操作清单
-
-- {checklist_item_1}
-- {checklist_item_2}
-- ...
-
----
-
-## 📈 数据透视
-
-### 趋势状态
-
-| 指标 | 值 |
-|------|------|
-| 均线排列 | {ma_alignment} |
-| 趋势评分 | {trend_score}/100 |
-| 多头确认 | {is_bullish} |
-
-### 价格位置
-
-| 指标 | 值 |
-|------|------|
-| 当前价 | {current_price} |
-| MA5 / MA10 / MA20 | {ma5} / {ma10} / {ma20} |
-| MA5 乖离率 | {bias_ma5}%（{bias_status}） |
-| 支撑位 | {support_level} |
-| 阻力位 | {resistance_level} |
-
-### 量能分析
-
-| 指标 | 值 |
-|------|------|
-| 量比 | {volume_ratio} |
-| 换手率 | {turnover_rate}% |
-| 量能状态 | {volume_status} |
-
----
-
-## 📰 情报研判
-
-**情绪倾向**：{sentiment_label}
-
-**正面催化**：
-- {positive_catalyst_1}
-- ...
-
-**风险预警**：
-- {risk_alert_1}
-- ...
-
-**关键新闻**：
-
-| 标题 | 影响 |
-|------|------|
-| {news_title} | {impact} |
-
----
-
-## 📋 策略使用
-
-{strategies_section}
-<!-- If strategy stage was included in the pipeline mode, list which strategies
-     were used. Example:
-
-     本次分析使用了以下策略：
-     1. **箱体震荡**（box_oscillation）— 识别价格箱体区间
-     2. **缩量回踩**（shrink_pullback）— 检测缩量回踩均线支撑信号
-
-     If no strategy stage was run (e.g. mode=news or mode=technical):
-
-     本次分析未使用任何策略。
--->
-
----
-
-## ⚠️ 风险提示
-
-{risk_warning}
-
-> **免责声明**：以上分析仅供参考，不构成投资建议。投资有风险，入市需谨慎。
-```
-
----END TEMPLATE---
-
----
-
-## Tools Reference
-
-Five independent tools live under `tools/`. Each can be run standalone
-via `uv run "TD/<name>.py"` or imported in Python (`from tools import <name>`).
-Strategies declare which tools they need in `required_tools`. During analysis,
-the LLM may call these tools directly to evaluate strategy entry conditions.
-
-`tools/` is the **bottom layer** — it depends only on external libraries
-(akshare, yfinance, pandas, numpy, scipy) and has **zero dependency on scripts/**.
-
-### Internal Dependency Graph
-
-```
-_providers.py               (INTERNAL — akshare, yfinance, pandas)
-get_daily_history          → _providers
-get_realtime_quote         → _providers
-search_stock_news          → _providers
-is_stock_hot               (standalone: East Money via requests, Sina fallback)
-get_technical_indicators   → get_daily_history + get_realtime_quote
-```
-
-### Tool Details
-
-| Tool | CLI | Returns |
-|------|-----|---------|
-| `get_daily_history` | `uv run "TD/get_daily_history.py" TICKER [--days 120]` | `[{date, open, high, low, close, volume}, …]` |
-| `get_realtime_quote` | `uv run "TD/get_realtime_quote.py" TICKER` | `{name, price, change_pct, volume, pe, pb, …}` |
-| `get_technical_indicators` | `uv run "TD/get_technical_indicators.py" TICKER [--days 120]` | `{ma5, ma10, ma20, rsi, trend_score, trend_status, support_levels, resistance_levels, pattern, …}` |
-| `search_stock_news` | `uv run "TD/search_stock_news.py" TICKER [--limit 10]` | `[{title, content, time, source, url, impact}, …]` — impact: positive / negative / neutral |
-| `is_stock_hot` | `uv run "TD/is_stock_hot.py" STOCK_NAME` | `{is_hot, matched_sectors: [{sector_name, change_percent, board_type}, …], hot_sectors: […]}` |
-
-### Using Tools with Strategies
-
-When the `strategy` stage recommends a strategy (e.g. `shrink_pullback`),
-check its `required_tools` field and call the corresponding tools to verify
-whether entry conditions are met. Example flow:
-
-1. Pipeline returns `strategy.recommended[0].name = "shrink_pullback"`
-   with `required_tools: [get_daily_history, get_technical_indicators, get_realtime_quote]`
-2. Call each tool to get fresh data:
-   ```bash
-   uv run "TD/get_daily_history.py" 600519
-   uv run "TD/get_technical_indicators.py" 600519
-   uv run "TD/get_realtime_quote.py" 600519
-   ```
-3. Evaluate the strategy's `instructions` against the tool outputs
-4. Incorporate the evaluation result into the final report's **策略使用** section
-
-> **Note**: In `full` / `quick` modes the pipeline already calls `get_technical_indicators`
-> internally, so `technical` data is available without extra tool calls. Only
-> invoke additional tools when a strategy requires data not present in the
-> pipeline output (e.g. `search_stock_news` or `is_stock_hot`).
+> Read `references/tools-reference.md` for CLI usage, return schemas, and
+> the internal dependency graph.
 
 ---
 
@@ -306,27 +126,15 @@ whether entry conditions are met. Example flow:
 
 11 built-in strategies in `strategies/`, auto-selected by market regime:
 
-| Regime | Trigger | Strategies |
-|--------|---------|------------|
-| sector_hot | Stock is leading stock of a top-10 sector (A-share only, highest priority) | dragon_head, emotion_cycle |
-| trending_up | MA bullish + trend_score ≥ 70 | bull_trend, volume_breakout, ma_golden_cross |
-| trending_down | MA bearish + trend_score ≤ 30 | shrink_pullback, bottom_volume |
-| sideways | neutral or 35 ≤ trend_score ≤ 65 | box_oscillation, shrink_pullback |
-| volatile | heavy volume + mixed trend_score | chan_theory, wave_theory |
+| Regime | Strategies |
+|--------|------------|
+| `sector_hot` | dragon_head, emotion_cycle |
+| `trending_up` | bull_trend, volume_breakout, ma_golden_cross |
+| `trending_down` | shrink_pullback, bottom_volume |
+| `sideways` | box_oscillation, shrink_pullback |
+| `volatile` | chan_theory, wave_theory |
 
-### Custom Strategies
+Custom strategies: drop a `.yaml` into `custom_strategies/` — auto-loaded, same-name overrides built-in.
 
-Drop a `.yaml` file into `custom_strategies/` — auto-loaded on next run.
-Same-name files override built-in strategies.
-
-Minimum template:
-
-```yaml
-name: my_strategy
-display_name: My Strategy
-description: When to use this strategy
-instructions: |
-  Entry criteria, exit rules, position sizing...
-```
-
-See `strategies/README.md` for the full template.
+> Read `references/strategies-guide.md` for regime detection logic,
+> strategy evaluation flow, required_tools, and the full YAML template.

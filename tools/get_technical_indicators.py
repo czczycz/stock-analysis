@@ -75,7 +75,7 @@ def compute_indicators_from_dataframe(
         support, resistance, pattern, realtime_quote, recent_history.
     """
     if df.empty or len(df) < 5:
-        return {"error": "Insufficient data"}
+        return {"_error": "Insufficient data"}
 
     close = df["Close"]
     volume = df["Volume"]
